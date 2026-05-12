@@ -121,7 +121,10 @@ with tab1:
         supabase.table("reclamos").insert(datos).execute()
 
         st.success("Reclamo guardado correctamente")
-#tab 2 editable###
+# =========================
+# TAB 2 - BUSQUEDA
+# =========================
+
 if "modo_edicion" not in st.session_state:
     st.session_state.modo_edicion = False
 
@@ -164,155 +167,154 @@ with tab2:
     # =========================
     # RESULTADOS
     # =========================
-    # =========================
-# RESULTADOS
-# =========================
-if resultados:
+    if resultados:
 
-    opciones = [
-        f"{r.get('fecha_carga','Sin fecha')} - {r.get('nombre_apellido','')}"
-        for r in resultados
-    ]
+        opciones = [
+            f"{r.get('fecha_carga','Sin fecha')} - {r.get('nombre_apellido','')}"
+            for r in resultados
+        ]
 
-    seleccion = st.selectbox(
-        "Historial de reclamos",
-        range(len(opciones)),
-        format_func=lambda x: opciones[x],
-        key="selector_historial"
-    )
+        seleccion = st.selectbox(
+            "Historial de reclamos",
+            range(len(opciones)),
+            format_func=lambda x: opciones[x],
+            key="selector_historial"
+        )
 
-    dato = resultados[seleccion]
+        dato = resultados[seleccion]
 
-    st.subheader("Datos del Reclamo")
+        st.subheader("Datos del Reclamo")
 
-    # =========================
-    # BOTONES (NO SE TOCAN)
-    # =========================
-    colb1, colb2 = st.columns(2)
+        # =========================
+        # BOTONES
+        # =========================
+        colb1, colb2 = st.columns(2)
 
-    with colb1:
-        if st.button("📄 Generar PDF"):
-            pdf_buffer = generar_pdf(dato)
+        with colb1:
+            if st.button("📄 Generar PDF"):
+                pdf_buffer = generar_pdf(dato)
 
-            st.download_button(
-                label="Descargar PDF",
-                data=pdf_buffer,
-                file_name=f"reclamo_{dato.get('dni','')}.pdf",
-                mime="application/pdf"
+                st.download_button(
+                    label="Descargar PDF",
+                    data=pdf_buffer,
+                    file_name=f"reclamo_{dato.get('dni','')}.pdf",
+                    mime="application/pdf"
+                )
+
+        with colb2:
+            if st.button("✏️ Editar"):
+                st.session_state.modo_edicion = True
+
+        editable = st.session_state.modo_edicion
+
+        # =========================
+        # CAMPOS
+        # =========================
+        col1, col2 = st.columns(2)
+
+        with col1:
+            nombre_edit = st.text_input("Nombre", value=dato.get("nombre_apellido",""), disabled=not editable)
+            dni_edit = st.number_input("DNI", value=int(dato.get("dni") or 0), disabled=not editable)
+            cuil_edit = st.number_input("CUIL", value=int(dato.get("cuil") or 0), disabled=not editable)
+            fecha_edit = st.text_input("Fecha nacimiento", value=dato.get("fecha_nacimiento",""), disabled=not editable)
+            cuenta_abc_edit = st.text_input("Cuenta ABC", value=dato.get("cuenta_abc",""), disabled=not editable)
+
+        with col2:
+            celular_edit = st.text_input("Celular", value=dato.get("celular",""), disabled=not editable)
+            cuenta_ips_edit = st.text_input("Cuenta IPS", value=dato.get("cuenta_ips",""), disabled=not editable)
+
+            tramite_edit = st.selectbox(
+                "Trámite Resuelto",
+                ["SI", "NO"],
+                index=0 if dato.get("tramite_resuelto") else 1,
+                disabled=not editable
             )
 
-    with colb2:
-        if st.button("✏️ Editar"):
-            st.session_state.modo_edicion = True
+            tipo_edit = st.selectbox(
+                "Tipo jubilación",
+                [
+                    "CIERRE DE COMPUTOS",
+                    "CESE ORDINARIO",
+                    "CCT",
+                    "RECONOCIMIENTO DE SERVICIOS",
+                    "RETRIBUCION ESPECIAL"
+                ],
+                index=[
+                    "CIERRE DE COMPUTOS",
+                    "CESE ORDINARIO",
+                    "CCT",
+                    "RECONOCIMIENTO DE SERVICIOS",
+                    "RETRIBUCION ESPECIAL"
+                ].index(dato.get("tipo_jubilacion")),
+                disabled=not editable
+            )
 
-    editable = st.session_state.modo_edicion
+        # =========================
+        # HISTORIAL
+        # =========================
+        st.divider()
+        st.subheader("📜 Historial de reclamos")
 
-    # =========================
-    # CAMPOS (IGUAL QUE YA TENÍAS)
-    # =========================
-    col1, col2 = st.columns(2)
+        historial = [
+            r for r in resultados
+            if r.get("dni") == dato.get("dni")
+        ]
 
-    with col1:
-        nombre_edit = st.text_input("Nombre", value=dato.get("nombre_apellido",""), disabled=not editable)
-        dni_edit = st.number_input("DNI", value=int(dato.get("dni") or 0), disabled=not editable)
-        cuil_edit = st.number_input("CUIL", value=int(dato.get("cuil") or 0), disabled=not editable)
-        fecha_edit = st.text_input("Fecha nacimiento", value=dato.get("fecha_nacimiento",""), disabled=not editable)
-        cuenta_abc_edit = st.text_input("Cuenta ABC", value=dato.get("cuenta_abc",""), disabled=not editable)
+        if historial:
 
-    with col2:
-        celular_edit = st.text_input("Celular", value=dato.get("celular",""), disabled=not editable)
-        cuenta_ips_edit = st.text_input("Cuenta IPS", value=dato.get("cuenta_ips",""), disabled=not editable)
+            reclamo_sel = st.selectbox(
+                "Seleccionar reclamo",
+                range(len(historial)),
+                format_func=lambda x: f"{historial[x].get('fecha_carga','')} - Reclamo {x+1}",
+                key="selector_reclamo"
+            )
 
-        tramite_edit = st.selectbox(
-            "Trámite Resuelto",
+            reclamo_actual = historial[reclamo_sel]
+
+            st.text_area(
+                "Reclamo seleccionado",
+                value=reclamo_actual.get("reclamo",""),
+                height=200,
+                disabled=True
+            )
+
+        # =========================
+        # NUEVO RECLAMO
+        # =========================
+        st.divider()
+        st.subheader("➕ Agregar nuevo reclamo")
+
+        nuevo_reclamo = st.text_area(
+            "Nuevo reclamo",
+            height=180,
+            key=f"nuevo_reclamo_{dato['id']}"
+        )
+
+        nuevo_estado = st.selectbox(
+            "Estado del trámite",
             ["SI", "NO"],
-            index=0 if dato.get("tramite_resuelto") else 1,
-            disabled=not editable
+            key=f"nuevo_estado_{dato['id']}"
         )
 
-        tipo_edit = st.selectbox(
-            "Tipo jubilación",
-            [
-                "CIERRE DE COMPUTOS",
-                "CESE ORDINARIO",
-                "CCT",
-                "RECONOCIMIENTO DE SERVICIOS",
-                "RETRIBUCION ESPECIAL"
-            ],
-            index=[
-                "CIERRE DE COMPUTOS",
-                "CESE ORDINARIO",
-                "CCT",
-                "RECONOCIMIENTO DE SERVICIOS",
-                "RETRIBUCION ESPECIAL"
-            ].index(dato.get("tipo_jubilacion")),
-            disabled=not editable
-        )
+        if st.button("Agregar reclamo nuevo"):
 
-    # =========================
-    # HISTORIAL DE RECLAMOS (NUEVO)
-    # =========================
-    st.divider()
-    st.subheader("📜 Historial de reclamos")
+            nuevo = {
+                "nombre_apellido": dato.get("nombre_apellido"),
+                "dni": int(dato.get("dni")),
+                "cuil": int(dato.get("cuil")),
+                "fecha_nacimiento": dato.get("fecha_nacimiento"),
+                "celular": dato.get("celular"),
+                "cuenta_abc": dato.get("cuenta_abc"),
+                "cuenta_ips": dato.get("cuenta_ips"),
+                "tramite_resuelto": True if nuevo_estado == "SI" else False,
+                "tipo_jubilacion": dato.get("tipo_jubilacion"),
+                "reclamo": nuevo_reclamo,
+                "fecha_carga": datetime.now().isoformat(),
+            }
 
-    historial = [
-        r for r in resultados
-        if r.get("dni") == dato.get("dni")
-    ]
+            supabase.table("reclamos").insert(nuevo).execute()
 
-    reclamo_sel = st.selectbox(
-        "Seleccionar reclamo",
-        range(len(historial)),
-        format_func=lambda x: f"{historial[x].get('fecha_carga','')} - Reclamo {x+1}",
-        key="selector_reclamo"
-    )
+            st.success("Nuevo reclamo agregado correctamente")
 
-    reclamo_actual = historial[reclamo_sel]
-
-    st.text_area(
-        "Reclamo seleccionado",
-        value=reclamo_actual.get("reclamo",""),
-        height=200,
-        disabled=True
-    )
-
-    # =========================
-    # NUEVO RECLAMO (SIN PERDERLO)
-    # =========================
-    st.divider()
-    st.subheader("➕ Agregar nuevo reclamo")
-
-    nuevo_reclamo = st.text_area(
-        "Nuevo reclamo",
-        height=180,
-        key=f"nuevo_reclamo_{dato['id']}"
-    )
-
-    nuevo_estado = st.selectbox(
-        "Estado del trámite",
-        ["SI", "NO"],
-        key=f"nuevo_estado_{dato['id']}"
-    )
-
-    if st.button("Agregar reclamo nuevo"):
-
-        nuevo = {
-            "nombre_apellido": dato.get("nombre_apellido"),
-            "dni": int(dato.get("dni")),
-            "cuil": int(dato.get("cuil")),
-            "fecha_nacimiento": dato.get("fecha_nacimiento"),
-            "celular": dato.get("celular"),
-            "cuenta_abc": dato.get("cuenta_abc"),
-            "cuenta_ips": dato.get("cuenta_ips"),
-            "tramite_resuelto": True if nuevo_estado == "SI" else False,
-            "tipo_jubilacion": dato.get("tipo_jubilacion"),
-            "reclamo": nuevo_reclamo,
-            "fecha_carga": datetime.now().isoformat(),
-        }
-
-        supabase.table("reclamos").insert(nuevo).execute()
-
-        st.success("Nuevo reclamo agregado correctamente")
-
-    else:
+    elif buscar_dni or buscar_apellido:
         st.warning("No se encontraron resultados")
